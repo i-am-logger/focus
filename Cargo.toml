@@ -1,0 +1,22 @@
+[package]
+name = "focus"
+version = "1.0.0"
+edition = "2024"
+authors = ["i-am-logger"]
+description = "Monochromatic screen overlay for Hyprland"
+license = "CC-BY-NC-SA-4.0"
+
+[dependencies]
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+[dev-dependencies]
+serial_test = "3.2"

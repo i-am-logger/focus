@@ -1,5 +1,6 @@
 # Hyprfocus
 [![CI](https://github.com/i-am-logger/hyprfocus/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/i-am-logger/hyprfocus/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/hyprfocus.svg)](https://crates.io/crates/hyprfocus)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Rust](https://img.shields.io/badge/Rust-2024-orange?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Hyprland](https://img.shields.io/badge/Hyprland-58E1FF?logo=hyprland&logoColor=white)](https://hyprland.org/)
@@ -79,10 +80,15 @@ Hyprfocus generates a GLSL fragment shader that converts each pixel to luminance
 | `--brightness` | 0.1–2.0 | Dim or boost the tint output |
 | `--saturation` | 0.0–2.0 | Mute (toward gray) or vivify the theme color |
 
+## Installation
+
+```bash
+cargo install hyprfocus
+```
+
 ## Requirements
 
 - Hyprland
-- Rust Edition 2024
 
 ## Development
 

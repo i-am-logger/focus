@@ -1,13 +1,13 @@
-# Hyprfocus
-[![CI](https://github.com/i-am-logger/hyprfocus/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/i-am-logger/hyprfocus/actions/workflows/ci.yml)
-[![crates.io](https://img.shields.io/crates/v/hyprfocus.svg)](https://crates.io/crates/hyprfocus)
+# Hypr-vogix
+[![CI](https://github.com/i-am-logger/hypr-vogix/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/i-am-logger/hypr-vogix/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/hypr-vogix.svg)](https://crates.io/crates/hypr-vogix)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Rust](https://img.shields.io/badge/Rust-2024-orange?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Hyprland](https://img.shields.io/badge/Hyprland-58E1FF?logo=hyprland&logoColor=white)](https://hyprland.org/)
 
 > Monochromatic screen overlay for Hyprland.
 
-Hyprfocus overlays your entire screen with shades of a single color palette, creating an immersive monochromatic experience. Choose a theme and your desktop transforms — military green night-vision, amber warmth, cyber cyan, and more.
+Hypr-vogix overlays your entire screen with shades of a single color palette, creating an immersive monochromatic experience. Choose a theme and your desktop transforms — military green night-vision, amber warmth, cyber cyan, and more.
 
 Built as a Rust CLI that generates GLSL shaders and applies them via Hyprland's native `decoration:screen_shader`. Works on all content including fullscreen apps. Launch it from your keybinds.
 
@@ -39,40 +39,40 @@ Built as a Rust CLI that generates GLSL shaders and applies them via Hyprland's 
 
 ```bash
 # Apply a theme
-hyprfocus --theme military
+hypr-vogix --theme military
 
 # Apply with reduced intensity (50% blend)
-hyprfocus --theme cyber --opacity 0.5
+hypr-vogix --theme cyber --opacity 0.5
 
 # Dim the output
-hyprfocus --theme amber --brightness 0.5
+hypr-vogix --theme amber --brightness 0.5
 
 # Boost color vividness
-hyprfocus --theme sepia --saturation 1.5
+hypr-vogix --theme sepia --saturation 1.5
 
 # Combine adjustments
-hyprfocus --theme void --opacity 0.8 --brightness 1.2 --saturation 1.3
+hypr-vogix --theme void --opacity 0.8 --brightness 1.2 --saturation 1.3
 
 # Check current state
-hyprfocus --status
+hypr-vogix --status
 
 # List available themes
-hyprfocus --list
+hypr-vogix --list
 
 # Turn off
-hyprfocus --off
+hypr-vogix --off
 ```
 
 ### Hyprland Keybinds
 
 ```ini
-bind = $mainMod, F, exec, hyprfocus --theme military
-bind = $mainMod SHIFT, F, exec, hyprfocus --off
+bind = $mainMod, F, exec, hypr-vogix --theme military
+bind = $mainMod SHIFT, F, exec, hypr-vogix --off
 ```
 
 ## How It Works
 
-Hyprfocus generates a GLSL fragment shader that converts each pixel to luminance (using Rec. 709 coefficients) and maps it to the theme color. The shader is applied at the compositor level via `hyprctl keyword decoration:screen_shader`, so it works on everything — including fullscreen apps and video.
+Hypr-vogix generates a GLSL fragment shader that converts each pixel to luminance (using Rec. 709 coefficients) and maps it to the theme color. The shader is applied at the compositor level via `hyprctl keyword decoration:screen_shader`, so it works on everything — including fullscreen apps and video.
 
 | Flag | Range | Effect |
 |------|-------|--------|
@@ -83,7 +83,7 @@ Hyprfocus generates a GLSL fragment shader that converts each pixel to luminance
 ## Installation
 
 ```bash
-cargo install hyprfocus
+cargo install hypr-vogix
 ```
 
 ## Requirements

@@ -83,7 +83,7 @@ fn print_themes() {
         );
     }
     println!();
-    println!("Usage: hyprfocus --theme <NAME> [--opacity] [--brightness] [--saturation]");
+    println!("Usage: hypr-vogix --theme <NAME> [--opacity] [--brightness] [--saturation]");
 }
 
 fn print_status() -> Result<()> {

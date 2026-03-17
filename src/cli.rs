@@ -24,9 +24,13 @@ pub struct Cli {
     #[arg(short, long, default_value = "1.0", requires = "theme", value_parser = parse_saturation)]
     pub saturation: f32,
 
-    /// Invert luminance (dark becomes theme color, light becomes dark)
+    /// Invert lightness using OKLAB color space
     #[arg(short, long, requires = "theme")]
     pub invert: bool,
+
+    /// Invert lightness using experimental algorithm
+    #[arg(long = "ie", requires = "theme", conflicts_with = "invert")]
+    pub invert_experimental: bool,
 
     /// Turn off the current overlay
     #[arg(long)]

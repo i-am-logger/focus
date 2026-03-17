@@ -16,10 +16,40 @@ const vec3 themeColor = vec3({R}, {G}, {B});
 const float intensity = {INTENSITY};
 const float brightness = {BRIGHTNESS};
 
+// OKLAB color space conversions (Björn Ottosson)
+vec3 srgb_to_oklab(vec3 c) {
+    vec3 lin = pow(c, vec3(2.2));
+    float l = 0.4122214708 * lin.r + 0.5363325363 * lin.g + 0.0514459929 * lin.b;
+    float m = 0.2119034982 * lin.r + 0.6806995451 * lin.g + 0.1073969566 * lin.b;
+    float s = 0.0883024619 * lin.r + 0.2817188376 * lin.g + 0.6299787005 * lin.b;
+    float l_ = pow(l, 1.0 / 3.0);
+    float m_ = pow(m, 1.0 / 3.0);
+    float s_ = pow(s, 1.0 / 3.0);
+    return vec3(
+        0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+        1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+        0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
+    );
+}
+
+vec3 oklab_to_srgb(vec3 c) {
+    float l_ = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
+    float m_ = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
+    float s_ = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
+    float l = l_ * l_ * l_;
+    float m = m_ * m_ * m_;
+    float s = s_ * s_ * s_;
+    vec3 lin = vec3(
+        4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+       -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+       -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+    );
+    return pow(clamp(lin, 0.0, 1.0), vec3(1.0 / 2.2));
+}
+
 void main() {
     vec4 pixColor = texture(tex, v_texcoord);
 
-    // Invert brightness if enabled (before luminance extraction)
 {INVERT_BLOCK}
     // Rec. 709 luminance
     float luminance = dot(pixColor.rgb, vec3({LUMA_R}, {LUMA_G}, {LUMA_B}));
@@ -27,7 +57,7 @@ void main() {
     // Luminance mapped to theme color, scaled by brightness
     vec3 mono = luminance * themeColor * brightness;
 
-    // Blend original and monochromatic (uses inverted pixColor for opacity blend)
+    // Blend original and monochromatic
     vec3 result = mix(pixColor.rgb, mono, intensity);
 
     fragColor = vec4(result, pixColor.a);
@@ -42,17 +72,38 @@ pub fn generate_shader(
     brightness: f32,
     saturation: f32,
     invert: bool,
+    invert_experimental: bool,
 ) -> String {
     let color = theme.color.with_saturation(saturation);
-    // Novikov brightness inversion: inverts lightness while preserving color character
-    // Adapted from https://github.com/vn971/linux-color-inversion
-    // Applies shift to original pixels BEFORE luminance extraction
-    let invert_block = if invert {
+    let invert_block = if invert_experimental {
+        // Experimental: your algorithm goes here
+        // Currently: simple Novikov shift as a starting point to iterate on
         concat!(
+            "    // Experimental inversion algorithm\n",
             "    float mn = min(min(pixColor.r, pixColor.g), pixColor.b);\n",
             "    float mx = max(max(pixColor.r, pixColor.g), pixColor.b);\n",
             "    float offset = 0.17 - mx - mn + 1.0;\n",
             "    pixColor.rgb = (pixColor.rgb + offset) / 1.17;\n",
+        )
+    } else if invert {
+        concat!(
+            "    // Invert perceptual lightness in OKLAB with gamut mapping\n",
+            "    vec3 lab = srgb_to_oklab(pixColor.rgb);\n",
+            "    lab.x = 1.0 - lab.x;\n",
+            "    // Binary search for max chroma that fits sRGB gamut\n",
+            "    float lo = 0.0, hi = 1.0;\n",
+            "    for (int i = 0; i < 12; i++) {\n",
+            "        float mid = (lo + hi) * 0.5;\n",
+            "        vec3 test_lab = vec3(lab.x, lab.y * mid, lab.z * mid);\n",
+            "        vec3 rgb = oklab_to_srgb(test_lab);\n",
+            "        if (rgb.r >= 0.0 && rgb.r <= 1.0 && rgb.g >= 0.0 && rgb.g <= 1.0 && rgb.b >= 0.0 && rgb.b <= 1.0)\n",
+            "            lo = mid;\n",
+            "        else\n",
+            "            hi = mid;\n",
+            "    }\n",
+            "    lab.y *= lo;\n",
+            "    lab.z *= lo;\n",
+            "    pixColor.rgb = oklab_to_srgb(lab);\n",
         )
     } else {
         ""
@@ -93,6 +144,7 @@ pub fn write_shader(
     brightness: f32,
     saturation: f32,
     invert: bool,
+    invert_experimental: bool,
 ) -> Result<PathBuf> {
     let dir = shader_dir()?;
     fs::create_dir_all(&dir).map_err(|e| FocusError::ShaderWriteFailed {
@@ -100,7 +152,13 @@ pub fn write_shader(
         source: e,
     })?;
 
-    let inv = if invert { "-inv" } else { "" };
+    let inv = if invert_experimental {
+        "-ie"
+    } else if invert {
+        "-inv"
+    } else {
+        ""
+    };
     let path = dir.join(format!(
         "hypr-vogix-{}-i{:.0}-b{:.0}-s{:.0}{inv}.glsl",
         theme.name,
@@ -108,7 +166,14 @@ pub fn write_shader(
         brightness * 100.0,
         saturation * 100.0
     ));
-    let source = generate_shader(theme, intensity, brightness, saturation, invert);
+    let source = generate_shader(
+        theme,
+        intensity,
+        brightness,
+        saturation,
+        invert,
+        invert_experimental,
+    );
 
     fs::write(&path, source).map_err(|e| FocusError::ShaderWriteFailed {
         path: path.clone(),
@@ -175,46 +240,46 @@ mod tests {
 
     #[test]
     fn generate_contains_version() {
-        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false);
+        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false, false);
         assert!(src.starts_with("#version 300 es"));
     }
 
     #[test]
     fn generate_contains_theme_color() {
-        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false);
+        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false, false);
         assert!(src.contains("vec3(0.0000, 1.0000, 0.0000)"));
     }
 
     #[test]
     fn generate_contains_intensity() {
-        let src = generate_shader(&test_theme(), 0.8, 1.0, 1.0, false);
+        let src = generate_shader(&test_theme(), 0.8, 1.0, 1.0, false, false);
         assert!(src.contains("const float intensity = 0.8000;"));
     }
 
     #[test]
     fn generate_full_intensity() {
-        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false);
+        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false, false);
         assert!(src.contains("const float intensity = 1.0000;"));
     }
 
     #[test]
     fn generate_zero_intensity() {
-        let src = generate_shader(&test_theme(), 0.0, 1.0, 1.0, false);
+        let src = generate_shader(&test_theme(), 0.0, 1.0, 1.0, false, false);
         assert!(src.contains("const float intensity = 0.0000;"));
     }
 
     #[test]
     fn generate_clamps_intensity() {
-        let src = generate_shader(&test_theme(), 2.0, 1.0, 1.0, false);
+        let src = generate_shader(&test_theme(), 2.0, 1.0, 1.0, false, false);
         assert!(src.contains("const float intensity = 1.0000;"));
 
-        let src = generate_shader(&test_theme(), -0.5, 1.0, 1.0, false);
+        let src = generate_shader(&test_theme(), -0.5, 1.0, 1.0, false, false);
         assert!(src.contains("const float intensity = 0.0000;"));
     }
 
     #[test]
     fn generate_has_valid_glsl_structure() {
-        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false);
+        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false, false);
         assert!(src.contains("void main()"));
         assert!(src.contains("fragColor ="));
         assert!(src.contains("texture(tex, v_texcoord)"));
@@ -223,49 +288,55 @@ mod tests {
 
     #[test]
     fn generate_brightness_default() {
-        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false);
+        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false, false);
         assert!(src.contains("const float brightness = 1.0000;"));
     }
 
     #[test]
     fn generate_brightness_dim() {
-        let src = generate_shader(&test_theme(), 1.0, 0.5, 1.0, false);
+        let src = generate_shader(&test_theme(), 1.0, 0.5, 1.0, false, false);
         assert!(src.contains("const float brightness = 0.5000;"));
     }
 
     #[test]
     fn generate_brightness_boost() {
-        let src = generate_shader(&test_theme(), 1.0, 1.8, 1.0, false);
+        let src = generate_shader(&test_theme(), 1.0, 1.8, 1.0, false, false);
         assert!(src.contains("const float brightness = 1.8000;"));
     }
 
     #[test]
     fn generate_saturation_desaturate() {
-        let src = generate_shader(&test_theme(), 1.0, 1.0, 0.0, false);
+        let src = generate_shader(&test_theme(), 1.0, 1.0, 0.0, false, false);
         assert!(src.contains("vec3(0.7152, 0.7152, 0.7152)"));
     }
 
     #[test]
     fn generate_saturation_boost() {
-        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.5, false);
+        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.5, false, false);
         assert!(src.contains("vec3(0.0000, 1.0000, 0.0000)"));
     }
 
     #[test]
     fn generate_invert_off() {
-        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false);
+        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false, false);
         assert!(!src.contains("exp("));
     }
 
     #[test]
     fn generate_invert_on() {
-        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, true);
-        assert!(src.contains("pixColor.rgb = (pixColor.rgb + offset) / 1.17"));
+        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, true, false);
+        assert!(src.contains("srgb_to_oklab"));
+    }
+
+    #[test]
+    fn generate_invert_experimental() {
+        let src = generate_shader(&test_theme(), 1.0, 1.0, 1.0, false, true);
+        assert!(src.contains("Experimental inversion"));
     }
 
     #[test]
     fn generate_amber_color() {
-        let src = generate_shader(&amber_theme(), 1.0, 1.0, 1.0, false);
+        let src = generate_shader(&amber_theme(), 1.0, 1.0, 1.0, false, false);
         assert!(src.contains("vec3(1.0000, 0.7100, 0.0000)"));
     }
 
@@ -285,7 +356,7 @@ mod tests {
         unsafe { std::env::set_var("XDG_RUNTIME_DIR", &tmp) };
 
         // Write
-        let path = write_shader(&test_theme(), 1.0, 1.0, 1.0, false).unwrap();
+        let path = write_shader(&test_theme(), 1.0, 1.0, 1.0, false, false).unwrap();
         assert!(path.exists());
         let content = std::fs::read_to_string(&path).unwrap();
         assert!(content.contains("#version 300 es"));

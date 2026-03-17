@@ -59,6 +59,7 @@ fn run(cli: Cli) -> Result<()> {
             cli.brightness,
             cli.saturation,
             cli.invert,
+            cli.invert_experimental,
         )
         .context("failed to write shader")?;
         hyprctl::set_shader(&shader_path).context("failed to apply shader")?;
@@ -69,6 +70,7 @@ fn run(cli: Cli) -> Result<()> {
             brightness: cli.brightness,
             saturation: cli.saturation,
             invert: cli.invert,
+            invert_experimental: cli.invert_experimental,
         })
         .context("failed to save state")?;
 
@@ -102,6 +104,9 @@ fn print_status() -> Result<()> {
             println!("  brightness: {:.1}", s.brightness);
             println!("  saturation: {:.1}", s.saturation);
             println!("  invert:     {}", s.invert);
+            if s.invert_experimental {
+                println!("  algorithm:  experimental");
+            }
         }
         None => {
             println!("No active overlay.");

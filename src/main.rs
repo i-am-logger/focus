@@ -197,9 +197,17 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn run_status() {
+        let tmp = std::env::temp_dir().join("hypr-vogix-status-test");
+        std::fs::create_dir_all(&tmp).unwrap();
+        unsafe { std::env::set_var("XDG_STATE_HOME", &tmp) };
+
         let cli = Cli::try_parse_from(["hypr-vogix", "--status"]).unwrap();
         assert!(run(cli).is_ok());
+
+        let _ = std::fs::remove_dir_all(&tmp);
+        unsafe { std::env::remove_var("XDG_STATE_HOME") };
     }
 
     #[test]

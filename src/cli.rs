@@ -43,8 +43,10 @@ pub struct Cli {
 
 fn parse_invert(s: &str) -> Result<String, String> {
     match s {
-        "oklab" | "hsv" => Ok(s.to_string()),
-        _ => Err(format!("unknown algorithm '{s}', available: oklab, hsv")),
+        "oklab" | "okhsl" | "hsv" => Ok(s.to_string()),
+        _ => Err(format!(
+            "unknown algorithm '{s}', available: oklab, okhsl, hsv"
+        )),
     }
 }
 

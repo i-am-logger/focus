@@ -53,6 +53,11 @@ hypr-vogix --theme sepia --saturation 1.5
 # Combine adjustments
 hypr-vogix --theme void --opacity 0.8 --brightness 1.2 --saturation 1.3
 
+# Invert lightness (dark mode → light mode)
+hypr-vogix --theme cyber --invert oklab
+hypr-vogix --theme cyber --invert okhsl
+hypr-vogix --theme cyber --invert hsv
+
 # Check current state
 hypr-vogix --status
 
@@ -79,6 +84,7 @@ Hypr-vogix generates a GLSL fragment shader that converts each pixel to luminanc
 | `--opacity` | 0.0–1.0 | Blend with original colors (1.0 = full monochrome) |
 | `--brightness` | 0.1–2.0 | Dim or boost the tint output |
 | `--saturation` | 0.0–2.0 | Mute (toward gray) or vivify the theme color |
+| `--invert` | oklab, okhsl, hsv | Invert lightness using the specified algorithm |
 
 ## Installation
 

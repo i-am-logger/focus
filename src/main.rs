@@ -122,13 +122,13 @@ mod tests {
 
     #[test]
     fn run_list() {
-        let cli = Cli::try_parse_from(["focus", "--list"]).unwrap();
+        let cli = Cli::try_parse_from(["hypr-vogix", "--list"]).unwrap();
         assert!(run(cli).is_ok());
     }
 
     #[test]
     fn run_unknown_theme() {
-        let cli = Cli::try_parse_from(["focus", "--theme", "nonexistent"]).unwrap();
+        let cli = Cli::try_parse_from(["hypr-vogix", "--theme", "nonexistent"]).unwrap();
         let err = run(cli).unwrap_err();
         assert!(err.downcast_ref::<FocusError>().is_some());
     }
@@ -137,7 +137,7 @@ mod tests {
     #[serial]
     fn run_off_without_hyprland() {
         unsafe { std::env::remove_var("HYPRLAND_INSTANCE_SIGNATURE") };
-        let cli = Cli::try_parse_from(["focus", "--off"]).unwrap();
+        let cli = Cli::try_parse_from(["hypr-vogix", "--off"]).unwrap();
         let err = run(cli).unwrap_err();
         assert!(err.downcast_ref::<FocusError>().is_some());
     }
@@ -146,14 +146,14 @@ mod tests {
     #[serial]
     fn run_theme_without_hyprland() {
         unsafe { std::env::remove_var("HYPRLAND_INSTANCE_SIGNATURE") };
-        let cli = Cli::try_parse_from(["focus", "--theme", "military"]).unwrap();
+        let cli = Cli::try_parse_from(["hypr-vogix", "--theme", "military"]).unwrap();
         let err = run(cli).unwrap_err();
         assert!(err.downcast_ref::<FocusError>().is_some());
     }
 
     #[test]
     fn run_status() {
-        let cli = Cli::try_parse_from(["focus", "--status"]).unwrap();
+        let cli = Cli::try_parse_from(["hypr-vogix", "--status"]).unwrap();
         assert!(run(cli).is_ok());
     }
 }

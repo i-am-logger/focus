@@ -16,37 +16,7 @@ const vec3 themeColor = vec3({R}, {G}, {B});
 const float intensity = {INTENSITY};
 const float brightness = {BRIGHTNESS};
 
-// OKLAB color space conversions (Björn Ottosson)
-vec3 srgb_to_oklab(vec3 c) {
-    vec3 lin = pow(c, vec3(2.2));
-    float l = 0.4122214708 * lin.r + 0.5363325363 * lin.g + 0.0514459929 * lin.b;
-    float m = 0.2119034982 * lin.r + 0.6806995451 * lin.g + 0.1073969566 * lin.b;
-    float s = 0.0883024619 * lin.r + 0.2817188376 * lin.g + 0.6299787005 * lin.b;
-    float l_ = pow(l, 1.0 / 3.0);
-    float m_ = pow(m, 1.0 / 3.0);
-    float s_ = pow(s, 1.0 / 3.0);
-    return vec3(
-        0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
-        1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
-        0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
-    );
-}
-
-vec3 oklab_to_srgb(vec3 c) {
-    float l_ = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
-    float m_ = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
-    float s_ = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
-    float l = l_ * l_ * l_;
-    float m = m_ * m_ * m_;
-    float s = s_ * s_ * s_;
-    vec3 lin = vec3(
-        4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-       -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-       -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
-    );
-    return pow(clamp(lin, 0.0, 1.0), vec3(1.0 / 2.2));
-}
-
+{OKLAB_FUNCTIONS}
 void main() {
     vec4 pixColor = texture(tex, v_texcoord);
 
@@ -71,7 +41,7 @@ pub fn generate_shader(
 ) -> String {
     let color = theme.color.with_saturation(saturation);
     let invert_block = if invert_experimental {
-        // Experimental: add theme color to every pixel
+        // Experimental: HSV value inversion with theme color mapping
         concat!(
             "    // HSV value inversion mapped to theme color\n",
             "    float mx = max(max(pixColor.r, pixColor.g), pixColor.b);\n",
@@ -80,8 +50,6 @@ pub fn generate_shader(
             "    vec3 themed = themeColor * invBright;\n",
             "    vec3 colored = (mx > 0.001) ? pixColor.rgb * (invBright / mx) : vec3(invBright);\n",
             "    fragColor = vec4(mix(colored, themed, intensity), pixColor.a);\n",
-            "    return;\n",
-            "    fragColor = vec4(pixColor.rgb, pixColor.a);\n",
             "    return;\n",
         )
     } else if invert {
@@ -107,7 +75,43 @@ pub fn generate_shader(
     } else {
         ""
     };
+    let oklab_functions = if invert {
+        concat!(
+            "// OKLAB color space conversions (Björn Ottosson)\n",
+            "vec3 srgb_to_oklab(vec3 c) {\n",
+            "    vec3 lin = pow(c, vec3(2.2));\n",
+            "    float l = 0.4122214708 * lin.r + 0.5363325363 * lin.g + 0.0514459929 * lin.b;\n",
+            "    float m = 0.2119034982 * lin.r + 0.6806995451 * lin.g + 0.1073969566 * lin.b;\n",
+            "    float s = 0.0883024619 * lin.r + 0.2817188376 * lin.g + 0.6299787005 * lin.b;\n",
+            "    float l_ = pow(l, 1.0 / 3.0);\n",
+            "    float m_ = pow(m, 1.0 / 3.0);\n",
+            "    float s_ = pow(s, 1.0 / 3.0);\n",
+            "    return vec3(\n",
+            "        0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,\n",
+            "        1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,\n",
+            "        0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_\n",
+            "    );\n",
+            "}\n\n",
+            "vec3 oklab_to_srgb(vec3 c) {\n",
+            "    float l_ = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;\n",
+            "    float m_ = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;\n",
+            "    float s_ = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;\n",
+            "    float l = l_ * l_ * l_;\n",
+            "    float m = m_ * m_ * m_;\n",
+            "    float s = s_ * s_ * s_;\n",
+            "    vec3 lin = vec3(\n",
+            "        4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,\n",
+            "       -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,\n",
+            "       -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s\n",
+            "    );\n",
+            "    return pow(clamp(lin, 0.0, 1.0), vec3(1.0 / 2.2));\n",
+            "}\n\n",
+        )
+    } else {
+        ""
+    };
     SHADER_TEMPLATE
+        .replace("{OKLAB_FUNCTIONS}", oklab_functions)
         .replace("{INVERT_BLOCK}", invert_block)
         .replace("{R}", &format!("{:.4}", color.r))
         .replace("{G}", &format!("{:.4}", color.g))
